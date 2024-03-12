@@ -8,28 +8,40 @@
 
 
 /////////////////////////////////////////////////////////////////
+// PINN ASSIGNMENTS
 
+// KY-040
 #define ROTARY_PIN1	3
 #define ROTARY_PIN2	2
 #define ROTARY_BTN 4
-#define FORCE_SWITCH  0
-#define TRIGGER_BTN 1
+
+// TM1637
 #define DISP_CLK A0
 #define DISP_DIO A1
+
+// Generic
+#define FORCE_SWITCH  0
+#define TRIGGER_BTN 1
 #define OUT A2
 
-
-
+/////////////////////////////////////
+// CONSTANTS
 #define CLICKS_PER_STEP 2
 #define MIN_POS 0
-#define MAX_POS 1800
+#define MAX_POS 9990
 #define START_POS 0
-#define INCREMENT 5
-#define INCREMENT_HOLD 50
+#define INCREMENT 50
+#define INCREMENT_HOLD 5
 #define MILLIS_PER_STEP 100
-#define DP  (SEG_DP  >> 2) // decimal to 3rd position
-#define COUNTDOWN_INCREMENT INCREMENT * MILLIS_PER_STEP
+#define DP  (SEG_DP  >> 2) // decimal to 3rd position(from left) because MILLIS_PER_STEP is 100
 
+#define DEBUG 0;
+
+/////////////////////////
+// Calculated build time variables
+
+#define HOLD_FOR_FINE INCREMENT > INCREMENT_HOLD
+#define COUNTDOWN_INCREMENT (HOLD_FOR_FINE ? INCREMENT_HOLD : INCREMENT) * MILLIS_PER_STEP
 
 /////////////////////////////////////////////////////////////////
 
@@ -39,7 +51,6 @@ const uint8_t SEG_ON[] = {
   SEG_C | SEG_E | SEG_G,                          // n
 };
 
-// const uint8_t DP = (SEG_DP  >> 2)
 /////////////////////////////////////////////////////////////////
 
 TM1637Display display(DISP_CLK, DISP_DIO);
@@ -67,6 +78,7 @@ void setup() {
   rotaryButton.begin(ROTARY_BTN);
   rotaryButton.setPressedHandler(rotaryButtonPressed);
   rotaryButton.setReleasedHandler(rotaryButtonReleased);
+  rotaryButton.setDoubleClickHandler(resetPosition);
 
   triggerButton.begin(TRIGGER_BTN);
   triggerButton.setTapHandler(trigger);
@@ -75,7 +87,9 @@ void setup() {
   forceSwitch.setPressedHandler(forceSwitchOn);
   forceSwitch.setReleasedHandler(forceSwitchOff);
 
-  Serial.begin(9600);
+  // if (DEBUG){
+  //   Serial.begin(9600);
+  // }
 
   r.begin(ROTARY_PIN1, ROTARY_PIN2, CLICKS_PER_STEP, MIN_POS, MAX_POS, START_POS, INCREMENT);
   r.setChangedHandler(rotate);
@@ -104,10 +118,22 @@ void rotate(Rotary& r) {
 
 void rotaryButtonPressed(Button2& b) {
     r.setIncrement(INCREMENT_HOLD);
+    fixPositionToIncrement();
 }
 
 void rotaryButtonReleased(Button2& b) {
     r.setIncrement(INCREMENT);
+    if (!HOLD_FOR_FINE){
+      fixPositionToIncrement();
+    }
+}
+
+void fixPositionToIncrement(){
+    r.resetPosition((r.getPosition() / r.getIncrement()) * r.getIncrement());
+}
+
+void resetPosition(){
+  r.resetPosition(START_POS);
 }
 
 void trigger(Button2& b) {
@@ -116,7 +142,7 @@ void trigger(Button2& b) {
     }
 
     unsigned long pos = r.getPosition();
-    unsigned long duration = pos*MILLIS_PER_STEP;
+    unsigned long duration = pos * MILLIS_PER_STEP;
 
     if(duration == 0){
       return;
@@ -136,7 +162,7 @@ void timerFinish(){
 
 
 bool timerInterval(){
-  unsigned long remainingTime = divRoundClosest(endTime - millis(), MILLIS_PER_STEP);
+  unsigned long remainingTime = divRoundClosest(endTime - millis(), MILLIS_PER_STEP);   // we do not care the exact time, we want to see something consistent and pretty
   display.showNumberDecEx(remainingTime, DP, false);
   return true;
 }
@@ -158,6 +184,9 @@ void toggleSwitch(bool turnon){
 
   if(!turnon){
     display.showNumberDecEx(r.getPosition(), DP, false);
+      r.setIncrement(INCREMENT);
+  }else{
+      r.setIncrement(0);
   }
 
 }
