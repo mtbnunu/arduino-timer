@@ -26,7 +26,7 @@
 
 /////////////////////////////////////
 // CONSTANTS
-#define CLICKS_PER_STEP 2
+#define CLICKS_PER_STEP 4
 #define MIN_POS 0
 #define MAX_POS 9990
 #define START_POS 0
