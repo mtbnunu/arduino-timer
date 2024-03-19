@@ -62,6 +62,7 @@ Timer<2> timer;
 
 unsigned long endTime;
 bool isActive;
+unsigned int currentPosition;
 
 /////////////////////////////////////////////////////////////////
 
@@ -94,7 +95,7 @@ void setup() {
   r.begin(ROTARY_PIN1, ROTARY_PIN2, CLICKS_PER_STEP, MIN_POS, MAX_POS, START_POS, INCREMENT);
   r.setChangedHandler(rotate);
 
-  display.showNumberDecEx(r.getPosition(), DP, false); 
+  display.showNumberDecEx(currentPosition, DP, false); 
 }
 
 void loop() {
@@ -113,7 +114,8 @@ void rotate(Rotary& r) {
     if(isActive){
       return;
     }
-    display.showNumberDecEx(r.getPosition(), DP, false);
+    currentPosition = r.getPosition();
+    display.showNumberDecEx(currentPosition, DP, false);
 }
 
 void rotaryButtonPressed(Button2& b) {
@@ -122,14 +124,13 @@ void rotaryButtonPressed(Button2& b) {
 }
 
 void rotaryButtonReleased(Button2& b) {
+    fixPositionToIncrement();
     r.setIncrement(INCREMENT);
-    if (!HOLD_FOR_FINE){
-      fixPositionToIncrement();
-    }
+
 }
 
 void fixPositionToIncrement(){
-    r.resetPosition((r.getPosition() / r.getIncrement()) * r.getIncrement());
+    r.resetPosition(currentPosition);
 }
 
 void resetPosition(){
@@ -141,7 +142,7 @@ void trigger(Button2& b) {
       return;
     }
 
-    unsigned long pos = r.getPosition();
+    unsigned long pos = currentPosition;
     unsigned long duration = pos * MILLIS_PER_STEP;
 
     if(duration == 0){
@@ -183,7 +184,7 @@ void toggleSwitch(bool turnon){
   digitalWrite(OUT, !turnon);
 
   if(!turnon){
-    display.showNumberDecEx(r.getPosition(), DP, false);
+    display.showNumberDecEx(currentPosition, DP, false);
       r.setIncrement(INCREMENT);
   }else{
       r.setIncrement(0);
